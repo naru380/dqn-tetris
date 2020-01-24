@@ -6,12 +6,19 @@ from utils import preprocess
 import numpy as np
 import torch
 
+RENDER = True
 
 SIZE_RESIZED_IMAGE = 84
 NUM_EPISODES = 10000
-
-env = gym_tetris.make('TetrisA-v0')
-# env = JoypadSpace(env, SIMPLE_MOVEMENT)
+BATCH_SIZE = 128
+GAMMA = 0.999
+LEARNING_RATE = 0.001
+EPS_START = 1.0
+EPS_END = 0.1
+EPS_DECAY = 1000000
+INTERVAL_UPDATE_POLICY_NET = 1
+INTERVAL_UPDATE_TARGET_NET = 10000
+REPLAY_MEMORY_SIZE = 400000
 MY_SIMPLE_MOVEMENT = [
     ['A'],
     ['B'],
@@ -19,43 +26,54 @@ MY_SIMPLE_MOVEMENT = [
     ['left'],
     ['down']
 ]
-env = JoypadSpace(env, MY_SIMPLE_MOVEMENT)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-agent = Agent(env, device)
 
-#prep = Prepocessing()
-for episode in range(NUM_EPISODES):
-    observation = env.reset()
-    state = preprocess(observation, SIZE_RESIZED_IMAGE)
 
-    t = 0
-    done = False
-    total_reward = 0
+if __name__ == '__main__':
 
-    while True:
-        t += 1
+    env = gym_tetris.make('TetrisA-v0')
+    env = JoypadSpace(env, MY_SIMPLE_MOVEMENT)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    params = {
+        'device': device,
+        'num_actions': env.action_space.n,
+        'batch_size': BATCH_SIZE,
+        'learning_rate': LEARNING_RATE,
+        'gamma': GAMMA,
+        'eps_start': EPS_START,
+        'eps_end': EPS_END,
+        'eps_decay': EPS_DECAY,
+        'interval_update_policy_net': INTERVAL_UPDATE_POLICY_NET,
+        'interval_update_target_net': INTERVAL_UPDATE_TARGET_NET,
+        'replay_memory_size': REPLAY_MEMORY_SIZE
+    }
+    agent = Agent(params)
 
-        action = int(agent.select_action(state).cpu().numpy())
-        observation, reward, done, _ = env.step(action)
+    for episode in range(NUM_EPISODES):
+        observation = env.reset()
+        state = preprocess(observation, SIZE_RESIZED_IMAGE)
+        t = done = total_reward = 0
 
-        env.render()
+        while True:
 
-        if done:
-            next_state = None
-        else:
-            next_state = preprocess(observation, SIZE_RESIZED_IMAGE)
+            if RENDER:
+                env.render()
 
-        agent.memorize(state, action, next_state, reward)
+            action = agent.get_action(state)
+            observation, reward, done, _ = env.step(action)
 
-        agent.optimize()
+            if done:
+                next_state = None
+            else:
+                next_state = preprocess(observation, SIZE_RESIZED_IMAGE)
 
-        state = next_state
-        total_reward += reward
+            agent.memorize(state, action, next_state, reward)
+            agent.train()
 
-        if done:
-            print('Episode:{}, Time_Steps:{}, Total_Reward:{}'.format(episode, t, total_reward))
-            t = 0
-            done = False
-            total_reward = 0
-            break
+            state = next_state
+            total_reward += reward
+
+            if done:
+                print('Episode:{}, Time_Steps:{}, Total_Reward:{}'.format(episode, t, total_reward))
+                t = done = total_reward = 0
+                break
