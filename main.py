@@ -45,11 +45,12 @@ for episode in range(NUM_EPISODES):
     observation = env.reset()
     state = preprocess(observation)
 
-    t = 1
+    t = 0
     done = False
     total_reward = 0
 
     while True:
+        t += 1
 
         action = int(agent.select_action(state).cpu().numpy())
         observation, reward, done, _ = env.step(action)
@@ -70,7 +71,7 @@ for episode in range(NUM_EPISODES):
 
         if done:
             print('Episode:{}, Time_Steps:{}, Total_Reward:{}'.format(episode, t, total_reward))
-            t = 1
+            t = 0
             done = False
             total_reward = 0
             break
