@@ -10,11 +10,12 @@ import math
 BATCH_SIZE = 128
 GAMMA = 0.999
 LEARNING_RATE = 0.001
-EPS_START = 0.9
-EPS_END = 0.05
+EPS_START = 1.0
+EPS_END = 0.1
 EPS_DECAY = 200
-TARGET_UPDATE = 10
-REPLAY_MEMORY_SIZE = 4000
+POLICY_NETWORK_UPDATE_INTERVAL = 1
+TARGET_NETWORK_UPDATE_INTERVAL = 10000
+REPLAY_MEMORY_SIZE = 400000
 
 
 
@@ -43,33 +44,39 @@ class Agent():
             return torch.tensor([[random.randrange(self.num_action)]], device=self.device, dtype=torch.long)
 
     def optimize(self):
-        if len(self.memory) < BATCH_SIZE:
-            return
-        transitions = self.memory.sample(BATCH_SIZE)
-        batch = Transition(*zip(*transitions))
+        if (len(self.memory) < BATCH_SIZE) or (self.steps_done % POLICY_NETWORK_UPDATE_INTERVAL != 0):
+            pass
+        else:
+            transitions = self.memory.sample(BATCH_SIZE)
+            batch = Transition(*zip(*transitions))
 
-        non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=self.device, dtype=torch.bool)
-        non_final_next_states = torch.cat([s for s in torch.tensor(batch.next_state, device=self.device, dtype=torch.float) if s is not None])
+            non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=self.device, dtype=torch.bool)
+            non_final_next_states = torch.cat([s for s in torch.tensor(batch.next_state, device=self.device, dtype=torch.float) if s is not None])
 
-        state_batch = torch.cat([torch.tensor(batch.state, device=self.device, dtype=torch.float)])
-        action_batch = torch.cat([torch.tensor(batch.action, device=self.device, dtype=torch.long)])
-        reward_batch = torch.cat([torch.tensor(batch.reward, device=self.device, dtype=torch.int)])
+            state_batch = torch.cat([torch.tensor(batch.state, device=self.device, dtype=torch.float)])
+            action_batch = torch.cat([torch.tensor(batch.action, device=self.device, dtype=torch.long)])
+            reward_batch = torch.cat([torch.tensor(batch.reward, device=self.device, dtype=torch.int)])
 
-        state_action_values = self.policy_net(state_batch).gather(1, action_batch.unsqueeze(1))
+            state_action_values = self.policy_net(state_batch).gather(1, action_batch.unsqueeze(1))
 
-        next_state_values = torch.zeros(BATCH_SIZE, device=self.device)
+            next_state_values = torch.zeros(BATCH_SIZE, device=self.device)
 
-        next_state_values[non_final_mask] = self.target_net(non_final_next_states.unsqueeze(1)).max(1)[0].detach()
+            next_state_values[non_final_mask] = self.target_net(non_final_next_states.unsqueeze(1)).max(1)[0].detach()
 
-        expected_state_action_values = (next_state_values * GAMMA) + reward_batch
+            expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
-        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
+            loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
 
-        self.optimizer.zero_grad()
-        loss.backward()
-        for param in self.policy_net.parameters():
-            param.grad.data.clamp_(-1, 1)
-        self.optimizer.step()
+            self.optimizer.zero_grad()
+            loss.backward()
+            for param in self.policy_net.parameters():
+                param.grad.data.clamp_(-1, 1)
+            self.optimizer.step()
+
+            if self.steps_done % TARGET_NETWORK_UPDATE_INTERVAL == 0:
+                self.update_target_network()
+
+        self.steps_done += 1
 
     def update_target_network(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())

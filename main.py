@@ -12,7 +12,7 @@ import torch
 from PIL import Image
 import torchvision.transforms as T
 
-NUM_EPISODES = 1
+NUM_EPISODES = 10000
 SIZE_RESIZED_IMAGE = 84
 
 def preprocess(observation):
@@ -36,7 +36,6 @@ MY_SIMPLE_MOVEMENT = [
     ['down']
 ]
 env = JoypadSpace(env, MY_SIMPLE_MOVEMENT)
-print(env.action_space)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 agent = Agent(env, device)
@@ -69,7 +68,7 @@ for episode in range(NUM_EPISODES):
         state = next_state
         total_reward += reward
 
-        if done or t > 500:
+        if done:
             print('Episode:{}, Time_Steps:{}, Total_Reward:{}'.format(episode, t, total_reward))
             t = 1
             done = False
