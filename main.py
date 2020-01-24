@@ -3,10 +3,13 @@ import gym_tetris
 from gym_tetris.actions import SIMPLE_MOVEMENT
 from agent import Agent
 from utils import preprocess
+import datetime
 import os
 import numpy as np
 import torch
 from tensorboardX import SummaryWriter
+
+NOW = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
 
 RENDER = True
 SIZE_RESIZED_IMAGE = 84
@@ -16,13 +19,13 @@ GAMMA = 0.999
 LEARNING_RATE = 0.001
 EPS_START = 1.0
 EPS_END = 0.1
-EPS_DECAY = 10#00000
+EPS_DECAY = 1000000
 INTERVAL_UPDATE_POLICY_NET = 1
 INTERVAL_UPDATE_TARGET_NET = 10000
 INTERVAL_SAVE_MODEL = 1000000
-REPLAY_MEMORY_SIZE = 400#000
-PATH_LOGS_DIR = './logs'
-PATH_MODELS_DIR = './models'
+REPLAY_MEMORY_SIZE = 400000
+PATH_LOGS_DIR = './logs/' + NOW
+PATH_MODELS_DIR = './models/' + NOW
 MY_SIMPLE_MOVEMENT = [
     ['A'],
     ['B'],
@@ -57,8 +60,8 @@ if __name__ == '__main__':
     agent = Agent(params)
 
     if not os.path.isdir(PATH_LOGS_DIR):
-        os.mkdir(PATH_LOGS_DIR)
-    writer = SummaryWriter(PATH_LOGS_DIR + '/test')
+        os.makedirs(PATH_LOGS_DIR)
+    writer = SummaryWriter(PATH_LOGS_DIR)
 
     for episode in range(1, NUM_EPISODES+1):
         observation = env.reset()
