@@ -57,7 +57,7 @@ for episode in range(NUM_EPISODES):
         env.render()
 
         if done:
-            next_state = none
+            next_state = None
         else:
             next_state = preprocess(observation)
 

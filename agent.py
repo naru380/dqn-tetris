@@ -15,7 +15,7 @@ EPS_END = 0.1
 EPS_DECAY = 200
 POLICY_NETWORK_UPDATE_INTERVAL = 1
 TARGET_NETWORK_UPDATE_INTERVAL = 10000
-REPLAY_MEMORY_SIZE = 400000
+REPLAY_MEMORY_SIZE = 400#000
 
 
 
@@ -51,7 +51,7 @@ class Agent():
             batch = Transition(*zip(*transitions))
 
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=self.device, dtype=torch.bool)
-            non_final_next_states = torch.cat([s for s in torch.tensor(batch.next_state, device=self.device, dtype=torch.float) if s is not None])
+            non_final_next_states = torch.cat([torch.tensor(s, device=self.device, dtype=torch.float) for s in batch.next_state if s is not None])
 
             state_batch = torch.cat([torch.tensor(batch.state, device=self.device, dtype=torch.float)])
             action_batch = torch.cat([torch.tensor(batch.action, device=self.device, dtype=torch.long)])
