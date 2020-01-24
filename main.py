@@ -1,30 +1,14 @@
 from nes_py.wrappers import JoypadSpace
 import gym_tetris
 from gym_tetris.actions import SIMPLE_MOVEMENT
-# from preprocessing import Prepocessing
 from agent import Agent
-
-import matplotlib
-import matplotlib.pyplot as plt
-
+from utils import preprocess
 import numpy as np
 import torch
-from PIL import Image
-import torchvision.transforms as T
 
-NUM_EPISODES = 10000
+
 SIZE_RESIZED_IMAGE = 84
-
-def preprocess(observation):
-    state = Image.fromarray(np.uint8(observation))
-    state = state.resize((SIZE_RESIZED_IMAGE, SIZE_RESIZED_IMAGE))
-    state = state.convert('L')
-    state = np.asarray(state)
-    state = state / 255.0
-    state = state[np.newaxis, :, :]
-    return state
-
-
+NUM_EPISODES = 10000
 
 env = gym_tetris.make('TetrisA-v0')
 # env = JoypadSpace(env, SIMPLE_MOVEMENT)
@@ -43,7 +27,7 @@ agent = Agent(env, device)
 #prep = Prepocessing()
 for episode in range(NUM_EPISODES):
     observation = env.reset()
-    state = preprocess(observation)
+    state = preprocess(observation, SIZE_RESIZED_IMAGE)
 
     t = 0
     done = False
@@ -60,7 +44,7 @@ for episode in range(NUM_EPISODES):
         if done:
             next_state = None
         else:
-            next_state = preprocess(observation)
+            next_state = preprocess(observation, SIZE_RESIZED_IMAGE)
 
         agent.memorize(state, action, next_state, reward)
 
