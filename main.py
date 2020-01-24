@@ -16,11 +16,11 @@ GAMMA = 0.999
 LEARNING_RATE = 0.001
 EPS_START = 1.0
 EPS_END = 0.1
-EPS_DECAY = 1000000
+EPS_DECAY = 10#00000
 INTERVAL_UPDATE_POLICY_NET = 1
 INTERVAL_UPDATE_TARGET_NET = 10000
 INTERVAL_SAVE_MODEL = 1000000
-REPLAY_MEMORY_SIZE = 400000
+REPLAY_MEMORY_SIZE = 400#000
 PATH_LOGS_DIR = './logs'
 PATH_MODELS_DIR = './models'
 MY_SIMPLE_MOVEMENT = [
@@ -56,14 +56,14 @@ if __name__ == '__main__':
     }
     agent = Agent(params)
 
-    if os.path.isdir(PATH_LOGS_DIR):
+    if not os.path.isdir(PATH_LOGS_DIR):
         os.mkdir(PATH_LOGS_DIR)
     writer = SummaryWriter(PATH_LOGS_DIR + '/test')
 
-    for episode in range(NUM_EPISODES):
+    for episode in range(1, NUM_EPISODES+1):
         observation = env.reset()
         state = preprocess(observation, SIZE_RESIZED_IMAGE)
-        t = done = total_rewards = 0
+        t = done = total_rewards = total_loss = total_max_q_val = 0
 
         while True:
 
@@ -83,12 +83,17 @@ if __name__ == '__main__':
 
             state = next_state
             total_rewards += reward
+            total_loss += agent.brain.loss
+            total_max_q_val += float(agent.brain.q_vals.max(1)[0])
 
-            if done or t > 1000:
+            if done or t > 100:
                 writer.add_scalar("total_rewards", total_rewards, episode)
                 writer.add_scalar("steps", total_rewards, episode)
-                print('Episode:{}, Time_Steps:{}, Total_Reward:{}'.format(episode, t, total_rewards))
-                t = done = total_rewards = 0
+                writer.add_scalar("avg_loss", total_loss/t, episode)
+                writer.add_scalar("avg_max_q_val", total_max_q_val/t, episode)
+                print('TIME_STEPS:{}, EPISODE:{}, T:{}, TOTAL_REWARDS:{}, AVG_LOSS:{}, AVG_MAX_Q_VAL:{}' \
+                    .format(agent.brain.steps_done, episode, t, total_rewards, total_loss/t, total_max_q_val/t))
+                t = done = total_rewards = total_loss = total_max_q_val = 0
                 break
 
             t += 1

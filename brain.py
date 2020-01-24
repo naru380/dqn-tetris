@@ -27,15 +27,19 @@ class Brain:
         self.memory = ReplayMemory(params['replay_memory_size'])
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
         self.steps_done = 0
+        self.q_vals = [0] * self.num_actions
+        self.loss = 0
 
 
     def decide_action(self, state):
         eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * math.exp(-1. * self.steps_done / self.eps_decay)
         self.steps_done += 1
+        with torch.no_grad():
+            self.q_vals = self.policy_net(torch.from_numpy(state).float().to(self.device).unsqueeze(0))
         sample = random.random()
         if sample > eps_threshold:
             with torch.no_grad():
-                return self.policy_net(torch.from_numpy(state).float().to(self.device).unsqueeze(0)).max(1)[1].view(1, 1)
+                return self.q_vals.max(1)[1].view(1, 1)
         else:
             return torch.tensor([[random.randrange(self.num_actions)]], device=self.device, dtype=torch.long)
 
@@ -59,10 +63,10 @@ class Brain:
 
         expected_state_action_values = (next_state_values * self.gamma) + reward_batch
 
-        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
+        self.loss = F.smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
 
         self.optimizer.zero_grad()
-        loss.backward()
+        self.loss.backward()
         for param in self.policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
