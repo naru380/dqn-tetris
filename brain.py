@@ -20,15 +20,13 @@ class Brain:
         self.eps_start = params['eps_start']
         self.eps_end = params['eps_end']
         self.eps_decay = params['eps_decay']
-        self.replay_memory_size = params['replay_memory_size']
         self.policy_net = QNetwork(self.num_actions).to(self.device)
         self.target_net = QNetwork(self.num_actions).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
-        self.memory = ReplayMemory(self.replay_memory_size)
+        self.memory = ReplayMemory(params['replay_memory_size'])
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.learning_rate)
         self.steps_done = 0
-        self.writer = SummaryWriter()
 
 
     def decide_action(self, state):
