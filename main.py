@@ -5,81 +5,61 @@ from agent import Agent
 from utils import preprocess
 import datetime
 import os
+import shutil
+import json
 import numpy as np
 import torch
 from tensorboardX import SummaryWriter
-
-NOW = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-
-RENDER = True
-SIZE_RESIZED_IMAGE = 84
-NUM_EPISODES = 10000
-BATCH_SIZE = 128
-GAMMA = 0.999
-LEARNING_RATE = 0.001
-EPS_START = 1.0
-EPS_END = 0.1
-EPS_DECAY = 1000000
-INTERVAL_UPDATE_POLICY_NET = 1
-INTERVAL_UPDATE_TARGET_NET = 10000
-INTERVAL_SAVE_MODEL = 1000000
-REPLAY_MEMORY_SIZE = 400000
-PATH_LOGS_DIR = './logs/' + NOW
-PATH_MODELS_DIR = './models/' + NOW
-MY_SIMPLE_MOVEMENT = [
-    ['A'],
-    ['B'],
-    ['right'],
-    ['left'],
-    ['down']
-]
 
 
 
 if __name__ == '__main__':
 
+    json_params = json.load(open('./params.json', 'r'))
+
     env = gym_tetris.make('TetrisA-v0')
-    env = JoypadSpace(env, MY_SIMPLE_MOVEMENT)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    env = JoypadSpace(env, json_params['action_space'])
+
+    now = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
     params = {
-        'device': device,
+        'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
         'num_actions': env.action_space.n,
-        'batch_size': BATCH_SIZE,
-        'learning_rate': LEARNING_RATE,
-        'gamma': GAMMA,
-        'eps_start': EPS_START,
-        'eps_end': EPS_END,
-        'eps_decay': EPS_DECAY,
-        'interval_update_policy_net': INTERVAL_UPDATE_POLICY_NET,
-        'interval_update_target_net': INTERVAL_UPDATE_TARGET_NET,
-        'interval_save_model': INTERVAL_SAVE_MODEL,
-        'replay_memory_size': REPLAY_MEMORY_SIZE,
-        'path_logs_dir': PATH_LOGS_DIR,
-        'path_models_dir': PATH_MODELS_DIR
+        'batch_size': json_params['batch_size'],
+        'learning_rate': json_params['learning_rate'],
+        'gamma': json_params['gamma'],
+        'eps_start': json_params['eps_start'],
+        'eps_end': json_params['eps_end'],
+        'eps_decay': json_params['eps_decay'],
+        'interval_update_policy_net': json_params['interval_update_policy_net'],
+        'interval_update_target_net': json_params['interval_update_target_net'],
+        'interval_save_model': json_params['interval_save_model'],
+        'replay_memory_size': json_params['replay_memory_size'],
+        'path_logs_dir': json_params['path_logs_root_dir']+'/'+now,
+        'path_models_dir': json_params['path_models_root_dir']+'/'+now
     }
     agent = Agent(params)
 
-    if not os.path.isdir(PATH_LOGS_DIR):
-        os.makedirs(PATH_LOGS_DIR)
-    writer = SummaryWriter(PATH_LOGS_DIR)
+    if not os.path.isdir(params['path_logs_dir']):
+        os.makedirs(params['path_logs_dir'])
+    shutil.copy('./params.json', params['path_logs_dir']+'/params.json')
+    writer = SummaryWriter(params['path_logs_dir'])
 
-    for episode in range(1, NUM_EPISODES+1):
+    for episode in range(1, json_params['num_episodes']+1):
         observation = env.reset()
-        state = preprocess(observation, SIZE_RESIZED_IMAGE)
+        state = preprocess(observation, json_params['size_resized_image'])
         t = done = total_rewards = total_loss = total_max_q_val = 0
 
         while True:
-
-            if RENDER:
+            if json_params['render']:
                 env.render()
 
+            t += 1
             action = agent.get_action(state)
             observation, reward, done, _ = env.step(action)
-
             if done:
                 next_state = None
             else:
-                next_state = preprocess(observation, SIZE_RESIZED_IMAGE)
+                next_state = preprocess(observation, json_params['size_resized_image'])
 
             agent.memorize(state, action, next_state, reward)
             agent.train()
@@ -89,7 +69,7 @@ if __name__ == '__main__':
             total_loss += agent.brain.loss
             total_max_q_val += float(agent.brain.q_vals.max(1)[0])
 
-            if done or t > 100:
+            if done:
                 writer.add_scalar("total_rewards", total_rewards, episode)
                 writer.add_scalar("steps", total_rewards, episode)
                 writer.add_scalar("avg_loss", total_loss/t, episode)
@@ -98,5 +78,3 @@ if __name__ == '__main__':
                     .format(agent.brain.steps_done, episode, t, total_rewards, total_loss/t, total_max_q_val/t))
                 t = done = total_rewards = total_loss = total_max_q_val = 0
                 break
-
-            t += 1

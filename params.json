@@ -1,0 +1,24 @@
+{
+    "render": false,
+    "action_space": [
+        ["A"],
+        ["B"],
+        ["right"],
+        ["left"],
+        ["down"]
+    ],
+    "num_episodes": 10000,
+    "size_resized_image": 84,
+    "batch_size": 84,
+    "learning_rate": 0.001,
+    "gamma": 0.999,
+    "eps_start": 1.0,
+    "eps_end": 0.1,
+    "eps_decay": 1000000,
+    "interval_update_policy_net": 1,
+    "interval_update_target_net": 10000,
+    "interval_save_model": 1000000,
+    "replay_memory_size": 400000,
+    "path_logs_root_dir": "./logs",
+    "path_models_root_dir": "./models"
+}
