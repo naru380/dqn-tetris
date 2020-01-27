@@ -1,7 +1,9 @@
 from nes_py.wrappers import JoypadSpace
 from network import QNetwork
 from utils import preprocess
+from gym import wrappers
 import gym_tetris
+import os
 import sys
 import torch
 
@@ -14,6 +16,10 @@ MY_SIMPLE_MOVEMENT = [
 ]
 
 SIZE_RESIZED_IMAGE = 84
+
+NUM_EPISODES = 1
+
+PATH_MOVIES_DIR = './movies'
 
 
 class TrainedBrain():
@@ -49,8 +55,13 @@ class TrainedAgent():
 if __name__ == '__main__':
     args = sys.argv
     path_model = args[1]
+    save_interval = int(args[2])
+
+    if not os.path.isdir(PATH_MOVIES_DIR):
+        os.makedirs(PATH_MOVIES_DIR)
 
     env = gym_tetris.make('TetrisA-v0')
+    env = wrappers.Monitor(env, PATH_MOVIES_DIR, video_callable=lambda ep: ep%save_interval==0, force=True)
     env = JoypadSpace(env, MY_SIMPLE_MOVEMENT)
 
     params = {
@@ -61,12 +72,14 @@ if __name__ == '__main__':
 
     agent = TrainedAgent(params)
 
-    done = True
-    for step in range(5000):
-        if done:
-            observation = env.reset()
-        state = preprocess(observation, SIZE_RESIZED_IMAGE)
-        observation, reward, done, _ = env.step(agent.get_action(state))
-        env.render()
+    for i in range(NUM_EPISODES):
+        done = False
+        observation = env.reset()
+        while True:
+            env.render()
+            state = preprocess(observation, SIZE_RESIZED_IMAGE)
+            observation, reward, done, _ = env.step(agent.get_action(state))
+            if done:
+                break
 
     env.close()
