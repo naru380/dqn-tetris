@@ -9,7 +9,8 @@ import shutil
 import json
 import numpy as np
 import torch
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 
 
@@ -43,6 +44,10 @@ if __name__ == '__main__':
         os.makedirs(params['path_logs_dir'])
     shutil.copy('./params.json', params['path_logs_dir']+'/params.json')
     writer = SummaryWriter(params['path_logs_dir'])
+    dummy_input_to_policy_net = torch.randn(1, json_params['size_resized_image'], json_params['size_resized_image']).float().to(params['device']).unsqueeze(0)
+    dummy_input_to_target_net = torch.randn(1, json_params['size_resized_image'], json_params['size_resized_image']).float().to(params['device']).unsqueeze(0)
+    writer.add_graph(agent.brain.policy_net, dummy_input_to_policy_net)
+    writer.add_graph(agent.brain.target_net, dummy_input_to_target_net)
 
     for episode in range(1, json_params['num_episodes']+1):
         observation = env.reset()
